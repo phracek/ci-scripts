@@ -24,13 +24,13 @@ class SendResults:
         <head></head>
             <body>
             <p>
-                Nightly build testing of RHSCL containers {results}
+                Nightly build testing of RHSCL containers on CentOS {results}
                 {cont}
             </p>
             </body>
         </html>
     """
-    title: str = "RHSCL daily night build testing "
+    title: str = "RHSCL: CentOS containers nightly build testing."
 
     def __init__(self):
         """
@@ -91,7 +91,7 @@ class SendResults:
             self.msg["Subject"] = self.title + short_result
             html = self.html.format(
                 results=short_result,
-                cont="<br>Failed containers: <br>" + "<br>".join(failed_containers),
+                cont="<br><br>Failed containers: <br>" + "<br>".join(failed_containers),
             )
         else:
             short_result = "was successful."
