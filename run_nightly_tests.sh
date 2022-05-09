@@ -11,7 +11,7 @@ TESTS="$1"
 
 TMT_REPO="https://gitlab.cee.redhat.com/platform-eng-core-services/sclorg-tmt-plans"
 TMT_BRANCH="master"
-API_RANCH="PRIVATE"
+API_KEY="API_KEY_PRIVATE"
 if [[ "$TARGET" == "rhel8" ]]; then
   COMPOSE="RHEL-8-Updated"
 elif [[ "$TARGET" == "rhel7" ]]; then
@@ -20,22 +20,22 @@ elif [[ "$TARGET" == "centos7" ]]; then
   COMPOSE="CentOS-7"
   TMT_REPO="https://github.com/sclorg/sclorg-testing-farm"
   TMT_BRANCH="main"
-  API_RANCH="PUBLIC"
+  API_KEY="API_KEY_PUBLIC"
 elif [[ "$TARGET" == "fedora" ]]; then
   COMPOSE="Fedora-latest"
   TMT_REPO="https://github.com/sclorg/sclorg-testing-farm"
   TMT_BRANCH="main"
-  API_RANCH="PUBLIC"
+  API_KEY="API_KEY_PUBLIC"
 elif [[ "$TARGET" == "c9s" ]]; then
   COMPOSE="CentOS-Stream-9"
   TMT_REPO="https://github.com/sclorg/sclorg-testing-farm"
   TMT_BRANCH="main"
-  API_RANCH="PUBLIC"
+  API_KEY="API_KEY_PUBLIC"
 elif [[ "$TARGET" == "c8s" ]]; then
   COMPOSE="CentOS-Stream-8"
   TMT_REPO="https://github.com/sclorg/sclorg-testing-farm"
   TMT_BRANCH="main"
-  API_RANCH="PUBLIC"
+  API_KEY="API_KEY_PUBLIC"
 else
   echo "This target is not supported"
   exit 1
@@ -58,7 +58,6 @@ LOG="${LOGS_DIR}/$TARGET-$TESTS.log"
 date > "${LOG}"
 curl -L https://url.corp.redhat.com/fmf-data > /tmp/fmf_data
 source /tmp/fmf_data
-API_KEY="${API_KEY}_${API_RANCH}"
 
 echo "TARGET is: ${TARGET} and test is: ${TESTS}" | tee -a "${LOG}"
 
@@ -83,7 +82,7 @@ function final_report() {
     new_state="failure"
   fi
   if [[ x"$new_state" == x"failure" ]]; then
-    curl "$TF_LOG/$REQ_ID/pipeline.log" > "${RESULT_DIR}/${TARGET}.log"
+    curl "$TF_LOG/$REQ_ID/pipeline.log" > "${LOGS_DIR}/pipeline-${TARGET}-${TESTS}.log"
   fi
   echo "New State: $new_state" | tee -a "${LOG}"
   echo "Infra state: $infra_error" | tee -a "${LOG}"
@@ -94,7 +93,7 @@ function schedule_testing_farm_request() {
   echo "Schedule job for: $TARGET" | tee -a "${LOG}"
   cat << EOF > "${REQUEST_JSON}"
     {
-      "api_key": "$API_KEY",
+      "api_key": "${!API_KEY}",
       "test": {"fmf": {
       "url": "${TMT_REPO}",
       "ref": "${TMT_BRANCH}",
