@@ -2,7 +2,7 @@ FROM quay.io/fedora/fedora:42
 
 ENV SHARED_DIR="/var/ci-scripts" \
     VERSION="42" \
-    RELEASE_UPSTREAM="0.9.0" \
+    RELEASE_UPSTREAM="0.10.0" \
     UPSTREAM_TMT_REPO="https://github.com/sclorg/sclorg-testing-farm" \
     UPSTREAM_TMT_DIR="sclorg-testing-farm" \
     HOME="/home/nightly" \
