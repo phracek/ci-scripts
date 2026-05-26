@@ -61,11 +61,16 @@ class ContainerEolChecker(object):
         Args:
             lifecycle: The lifecycle.
         """
-        if "enddate" not in lifecycle:
+        if "enddate" not in lifecycle or "application_stream_name" not in lifecycle:
+            logger.warning("Skipping lifecycle missing required fields: %s", lifecycle)
             return
 
         application_stream_name = lifecycle["application_stream_name"]
-        enddate = datetime.strptime(lifecycle["enddate"], "%Y%m%d").date()
+        try:
+            enddate = datetime.strptime(str(lifecycle["enddate"]), "%Y%m%d").date()
+        except (TypeError, ValueError):
+            logger.warning("Skipping lifecycle with invalid enddate: %s", lifecycle)
+            return
 
         logger.debug(
             "Enddate('%s'): '%s' and today is '%s'",
