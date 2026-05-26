@@ -15,7 +15,7 @@ jobs:
         tox_env: [py311, py312, py313, py314]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v6
     - uses: fedora-python/tox-github-action@main
       with:
         tox_env: ${{ matrix.tox_env }}
