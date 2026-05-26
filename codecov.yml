@@ -11,6 +11,8 @@ flags:
     carryforward: true
   ocp-stream-generator-unit:
     carryforward: true
+  eol-checker-unit:
+    carryforward: true
 
 comment:
   layout: "reach,diff,flags,files"

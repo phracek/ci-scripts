@@ -1,0 +1,29 @@
+---
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - master
+
+name: Run Tox tests on eol_checker
+jobs:
+  tox_test:
+    strategy:
+      matrix:
+        tox_env: [py311, py312, py313, py314]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: fedora-python/tox-github-action@main
+      with:
+        tox_env: ${{ matrix.tox_env }}
+        workdir: "eol-checker/"
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        flags: eol-checker-unit
+        files: eol-checker/coverage.xml
+        fail_ci_if_error: false
