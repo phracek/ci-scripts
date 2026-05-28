@@ -167,9 +167,9 @@ def test_summary_for_images_when_jira_unavailable(checker):
 def test_summary_for_images_without_jira_ticket(checker):
     checker.eol_images["RHEL9"] = {"nodejs": _container_struct("nodejs-18", "20250501")}
     flexmock(checker.jira_fetcher).should_receive("jira").and_return(flexmock())
-    flexmock(checker.jira_fetcher).should_receive(
-        "is_jira_filled_for_container"
-    ).with_args(stream_name="nodejs-18").and_return("")
+    flexmock(checker.jira_fetcher).should_receive("is_jira_filled_for_container").with_args(
+        stream_name="nodejs-18"
+    ).and_return("")
 
     report = checker.summary_for_images(checker.eol_images, "RHEL9")
 
@@ -199,13 +199,9 @@ def test_summary_report_includes_all_eol_categories(checker):
         checker.eol_images[os_name] = {}
         checker.approaching_eol_images[os_name] = {}
         checker.already_eol_images[os_name] = {}
-    checker.already_eol_images["RHEL8"] = {
-        "nodejs": _container_struct("nodejs-16", "20250401")
-    }
+    checker.already_eol_images["RHEL8"] = {"nodejs": _container_struct("nodejs-16", "20250401")}
     checker.eol_images["RHEL9"] = {"nodejs": _container_struct("nodejs-18", "20250501")}
-    checker.approaching_eol_images["RHEL10"] = {
-        "httpd": _container_struct("httpd-26", "20250601")
-    }
+    checker.approaching_eol_images["RHEL10"] = {"httpd": _container_struct("httpd-26", "20250601")}
     flexmock(checker.jira_fetcher).should_receive("jira").and_return(None)
 
     report = checker.summary_report()
@@ -257,9 +253,7 @@ def test_analyze_containers_analyzes_downloaded_yaml(checker):
     flexmock(checker_module.YamlLoader).should_receive("get_yaml_url").and_return(
         "http://test/yaml"
     )
-    flexmock(checker_module.YamlLoader).should_receive("download_yaml").and_return(
-        lifecycle_data
-    )
+    flexmock(checker_module.YamlLoader).should_receive("download_yaml").and_return(lifecycle_data)
     flexmock(checker).should_receive("analyze_lifecycle_yaml").with_args(
         lifecycle_data
     ).at_least().once()
@@ -274,16 +268,12 @@ def test_analyze_containers_populates_eol_from_yaml(checker):
     flexmock(checker_module.YamlLoader).should_receive("get_yaml_url").and_return(
         "http://test/yaml"
     )
-    flexmock(checker_module.YamlLoader).should_receive("download_yaml").and_return(
-        lifecycle_data
-    )
+    flexmock(checker_module.YamlLoader).should_receive("download_yaml").and_return(lifecycle_data)
 
     checker.analyze_containers()
 
     for os_name in OS_NAMES:
-        assert checker.eol_images[os_name]["nodejs"] == _container_struct(
-            "nodejs-18", "20250501"
-        )
+        assert checker.eol_images[os_name]["nodejs"] == _container_struct("nodejs-18", "20250501")
 
 
 def _mock_send_email_env():
@@ -307,9 +297,9 @@ def test_send_emails_sends_html_message(checker):
     mock_smtp.should_receive("sendmail").once()
     mock_smtp.should_receive("close").once()
     _mock_send_email_env()
-    flexmock(checker_module).should_receive("SMTP").with_args(
-        "smtp.test", 2525
-    ).and_return(mock_smtp)
+    flexmock(checker_module).should_receive("SMTP").with_args("smtp.test", 2525).and_return(
+        mock_smtp
+    )
 
     checker.send_emails()
 
@@ -325,9 +315,7 @@ def test_send_emails_logs_smtp_exception(checker, caplog):
     checker.body = "report"
     mock_smtp = flexmock()
     mock_smtp.should_receive("set_debuglevel").and_return(None)
-    mock_smtp.should_receive("sendmail").and_raise(
-        smtplib.SMTPException("smtp failure")
-    )
+    mock_smtp.should_receive("sendmail").and_raise(smtplib.SMTPException("smtp failure"))
     mock_smtp.should_receive("close").once()
     _mock_send_email_env()
     flexmock(checker_module).should_receive("SMTP").and_return(mock_smtp)
@@ -340,9 +328,7 @@ def test_send_emails_logs_smtp_exception(checker, caplog):
 
 def test_run_skips_jira_when_connection_unavailable(checker):
     flexmock(checker.jira_fetcher).should_receive("jira").and_return(None)
-    flexmock(checker.jira_fetcher).should_receive(
-        "get_jira_deprecation_details"
-    ).never()
+    flexmock(checker.jira_fetcher).should_receive("get_jira_deprecation_details").never()
     flexmock(checker).should_receive("analyze_containers").once()
     flexmock(checker).should_receive("summary_report").and_return("\nreport\n")
     flexmock(checker).should_receive("send_emails").never()

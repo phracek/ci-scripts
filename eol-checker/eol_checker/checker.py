@@ -109,14 +109,10 @@ class ContainerEolChecker(object):
             self.eol_images[self.os_name][self.container_to_analyze] = container_struct
         if is_eol == 2:
             eol_msg = f"Deprecation of image stream {application_stream_name} is approaching next month should be scheduled: enddate is {enddate}"
-            self.approaching_eol_images[self.os_name][
-                self.container_to_analyze
-            ] = container_struct
+            self.approaching_eol_images[self.os_name][self.container_to_analyze] = container_struct
         if is_eol == 3:
             eol_msg = f"Deprecation of image stream {application_stream_name} already approached one month ago should be scheduled: enddate is {enddate}"
-            self.already_eol_images[self.os_name][
-                self.container_to_analyze
-            ] = container_struct
+            self.already_eol_images[self.os_name][self.container_to_analyze] = container_struct
         if is_eol != 0:
             logger.info(eol_msg)
 
@@ -144,16 +140,9 @@ class ContainerEolChecker(object):
             if self.jira_fetcher.jira is None
             else "Jira ticket is not filled. Use Jira issue template:"
         )
-        return (
-            self.bold_line
-            + f"{report_type} in {enddate}"
-            + self.bold_line_end
-            + f". {jira_msg}"
-        )
+        return self.bold_line + f"{report_type} in {enddate}" + self.bold_line_end + f". {jira_msg}"
 
-    def summary_for_images(
-        self, images: dict, os_name: str, eol_type: bool = True
-    ) -> str:
+    def summary_for_images(self, images: dict, os_name: str, eol_type: bool = True) -> str:
         """
         Generate a summary report for the images.
         Args:
@@ -168,17 +157,12 @@ class ContainerEolChecker(object):
         report_type = "reached EOL" if eol_type else "approaching EOL"
         report = "\n"
         report += (
-            self.bold_line
-            + f"Summary report for {os_name}:"
-            + self.bold_line_end
-            + self.end_line
+            self.bold_line + f"Summary report for {os_name}:" + self.bold_line_end + self.end_line
         )
         report += self.end_line + "\n"
         logger.debug("EOL images: '%s'", images)
         for container_name, values in images[os_name].items():
-            logger.info(
-                "Processing container: '%s' with values: '%s'", container_name, values
-            )
+            logger.info("Processing container: '%s' with values: '%s'", container_name, values)
             stream_name = values["name"]
             if self.send_email:
                 for mail in self.eol_sme_mails[container_name]:
@@ -186,36 +170,20 @@ class ContainerEolChecker(object):
                         self.default_mails.append(mail)
             if self.jira_fetcher.jira is None:
                 logger.error("Connection to Jira failed")
-                jira_msg = self._get_jira_msg(
-                    report_type=report_type, enddate=values["enddate"]
-                )
+                jira_msg = self._get_jira_msg(report_type=report_type, enddate=values["enddate"])
                 jira_id = self.jira_fetcher.jira_deprecation_ticket
                 jira_url = get_jira_ticket_url(jira_issue_id=jira_id)
-                url = (
-                    f"<a href='{jira_url}'>{jira_url}</a>"
-                    if self.send_email
-                    else jira_url
-                )
+                url = f"<a href='{jira_url}'>{jira_url}</a>" if self.send_email else jira_url
                 report += f"{stream_name} for {os_name} {jira_msg} {url}{self.end_line}"
                 continue
-            jira_msg = self._get_jira_msg(
-                report_type=report_type, enddate=values["enddate"]
-            )
+            jira_msg = self._get_jira_msg(report_type=report_type, enddate=values["enddate"])
             jira_msg += "Jira ticket is already filed:"
-            jira_id = self.jira_fetcher.is_jira_filled_for_container(
-                stream_name=stream_name
-            )
+            jira_id = self.jira_fetcher.is_jira_filled_for_container(stream_name=stream_name)
             if jira_id == "":
-                jira_msg = self._get_jira_msg(
-                    report_type=report_type, enddate=values["enddate"]
-                )
+                jira_msg = self._get_jira_msg(report_type=report_type, enddate=values["enddate"])
                 jira_id = self.jira_fetcher.jira_deprecation_ticket
                 jira_url = get_jira_ticket_url(jira_issue_id=jira_id)
-                url = (
-                    f"<a href='{jira_url}'>{jira_url}</a>"
-                    if self.send_email
-                    else jira_url
-                )
+                url = f"<a href='{jira_url}'>{jira_url}</a>" if self.send_email else jira_url
                 report += f"{stream_name} for {os_name} {jira_msg} {url}{self.end_line}"
             report += "\n"
 
@@ -230,13 +198,9 @@ class ContainerEolChecker(object):
         report = "\n"
         for os_name in OS_NAMES:
             if len(self.already_eol_images[os_name]) != 0:
-                report += self.summary_for_images(
-                    images=self.already_eol_images, os_name=os_name
-                )
+                report += self.summary_for_images(images=self.already_eol_images, os_name=os_name)
             if len(self.eol_images[os_name]) != 0:
-                report += self.summary_for_images(
-                    images=self.eol_images, os_name=os_name
-                )
+                report += self.summary_for_images(images=self.eol_images, os_name=os_name)
             if len(self.approaching_eol_images[os_name]) != 0:
                 report += self.summary_for_images(
                     images=self.approaching_eol_images, os_name=os_name, eol_type=False
@@ -266,9 +230,7 @@ class ContainerEolChecker(object):
                     continue
                 self.lifecycle_data = YamlLoader.download_yaml(yaml_url)
                 if self.lifecycle_data is None:
-                    logger.error(
-                        "Failed to download lifecycle YAML file from '%s'", yaml_url
-                    )
+                    logger.error("Failed to download lifecycle YAML file from '%s'", yaml_url)
                     continue
                 self.analyze_lifecycle_yaml(self.lifecycle_data)
             logger.info("Analyzing OS %s completed", self.os_name)
