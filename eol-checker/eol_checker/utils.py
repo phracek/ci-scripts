@@ -95,7 +95,13 @@ def load_mails_from_environment():
     sclorg_mails["mysql"] = get_env_variable("DB_MAILS").split(",")
     sclorg_mails["postgresql"] = get_env_variable("DB_MAILS").split(",")
     sclorg_mails["ruby"] = get_env_variable("RUBY_MAILS").split(",")
-    sclorg_mails["python"] = get_env_variable("PYTHON_MAILS").split(",")
+    python_mails = get_env_variable("PYTHON_MAILS").split(",")
+    sclorg_mails["python"] = python_mails
+    sclorg_mails["python36"] = python_mails
+    sclorg_mails["python38"] = python_mails
+    sclorg_mails["python39"] = python_mails
+    sclorg_mails["python311"] = python_mails
+    sclorg_mails["python312"] = python_mails
     sclorg_mails["nodejs"] = get_env_variable("NODEJS_MAILS").split(",")
     sclorg_mails["perl"] = get_env_variable("PERL_MAILS").split(",")
     sclorg_mails["php"] = get_env_variable("PHP_MAILS").split(",")
