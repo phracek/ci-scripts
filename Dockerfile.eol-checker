@@ -1,0 +1,29 @@
+FROM quay.io/fedora/fedora:42
+
+ENV VERSION="42" \
+    RELEASE_UPSTREAM="0.10.2" \
+    HOME="/home/eol-checker" \
+    SUMMARY="EOL checker for SCL org projects" \
+    DESCRIPTION="This image is used to run EOL checker for SCL org projects in CI." \
+    NAME="eol-checker" \
+    WORK_DIR="/home/eol-checker/eol-checker"
+
+LABEL summary="${SUMMARY}" \
+    description="${DESCRIPTION}" \
+    io.k8s.description="${DESCRIPTION}" \
+    io.k8s.display-name="EOL Checker for SCL org projects" \
+    io.k8s.vendor="SCL org" \
+    architecture="x86_64"
+
+RUN dnf install -y python3.13-pip git && \
+    dnf clean all
+
+COPY requirements.sh requirements.txt "${WORK_DIR}"
+RUN bash "${WORK_DIR}/requirements.sh" && pip3 install -r "${WORK_DIR}/requirements.txt"
+
+COPY . /root/ci-scripts
+WORKDIR "${HOME}"
+
+# USER 900
+
+CMD ["/root/ci-scripts/eol-checker/eol-checker"]
