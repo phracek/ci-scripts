@@ -8,3 +8,4 @@ shellcheck:
 
 build_images:
 	podman build -t quay.io/sclorg/upstream-daily-tests:0.10.1 -f Dockerfile.daily-tests .
+	podman build -t quay.io/sclorg/upstream-eol-checker:0.10.2 -f Dockerfile.eol-checker .

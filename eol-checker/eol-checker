@@ -30,7 +30,6 @@ import sys
 import argparse
 import urllib3
 
-from eol_checker.custom_logger import setup_logger
 from eol_checker.checker import ContainerEolChecker
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -66,8 +65,7 @@ def main(args):
         The exit code. 0 if successful, 1 if error.
     """
     print(f"Arguments: {args}")
-    setup_logger(level=logging.DEBUG if args.debug else logging.INFO)
-    checker = ContainerEolChecker(send_email=args.send_email)
+    checker = ContainerEolChecker(debug=args.debug, send_email=args.send_email)
     checker.run()
     sys.exit(0)
 

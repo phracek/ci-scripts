@@ -22,3 +22,15 @@ jobs:
           tag: "0.10.1"
           image_name: "upstream-daily-tests"
           quay_application_token: ${{ secrets.QUAY_IMAGE_SCLORG_UPDATE_DESC }}
+
+      - name: Build and push eol-checker image to quay.io registry
+        uses: sclorg/build-and-push-action@v4
+        with:
+          registry: "quay.io"
+          registry_namespace: "sclorg"
+          registry_username: ${{ secrets.QUAY_IMAGE_SCLORG_BUILDER_USERNAME }}
+          registry_token: ${{ secrets.QUAY_IMAGE_SCLORG_BUILDER_TOKEN }}
+          dockerfile: Dockerfile.eol-checker
+          tag: "0.10.2"
+          image_name: "upstream-eol-checker"
+          quay_application_token: ${{ secrets.QUAY_IMAGE_SCLORG_UPDATE_DESC }}

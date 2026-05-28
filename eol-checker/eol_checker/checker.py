@@ -37,6 +37,7 @@ from datetime import date, datetime
 from typing import Any, Dict, List
 
 from eol_checker.jira import JiraFetcher
+from eol_checker.custom_logger import setup_logger
 from eol_checker.yaml_loader import YamlLoader
 from eol_checker.utils import (
     get_jira_ticket_url,
@@ -57,7 +58,7 @@ class ContainerEolChecker(object):
     Checker for container image EOL dates from lifecycle YAML.
     """
 
-    def __init__(self, send_email: bool = False):
+    def __init__(self, debug: bool = False, send_email: bool = False):
         self.today = date.today()
         self.lifecycle_data: Any = None
         self.eol_images: dict = {}
@@ -68,7 +69,15 @@ class ContainerEolChecker(object):
         self.container_to_analyze: str = ""
         self.jira_fetcher = JiraFetcher()
         self.eol_sme_mails = load_mails_from_environment()
-        self.send_email = send_email
+        # Used for OpenShift CronJob
+        if "DEBUG" in os.environ:
+            self._setup_logger(debug=bool(os.getenv("DEBUG")))
+        else:
+            self._setup_logger(debug=debug)
+        if "SEND_EMAIL" in os.environ:
+            self.send_email = bool(os.getenv("SEND_EMAIL"))
+        else:
+            self.send_email = send_email
         self.smtp_port = 25
         self.smtp_server = "smtp.redhat.com"
         self.end_line = "<br>" if self.send_email else "\n"
@@ -76,6 +85,18 @@ class ContainerEolChecker(object):
         self.bold_line_end = "</b>" if self.send_email else ""
         self.mime_msg = MIMEMultipart()
         self.body = ""
+        self.debug = bool(os.getenv("DEBUG", "False"))
+
+    def _setup_logger(self, debug: bool = False):
+        """
+        Setup the logger.
+        Args:
+            debug: The debug flag.
+        """
+        if debug is False:
+            setup_logger(level=logging.DEBUG)
+        else:
+            setup_logger(level=logging.INFO)
 
     def check_enddate(self, lifecycle: Dict[str, Any]) -> None:
         """
@@ -159,7 +180,6 @@ class ContainerEolChecker(object):
         report += (
             self.bold_line + f"Summary report for {os_name}:" + self.bold_line_end + self.end_line
         )
-        report += self.end_line + "\n"
         logger.debug("EOL images: '%s'", images)
         for container_name, values in images[os_name].items():
             logger.info("Processing container: '%s' with values: '%s'", container_name, values)
@@ -196,6 +216,8 @@ class ContainerEolChecker(object):
             The summary report.
         """
         report = "\n"
+        if self.jira_fetcher.jira is None:
+            report += "The EOL checker is not able to connect to Jira. Update the Jira credentials in the environment variables."
         for os_name in OS_NAMES:
             if len(self.already_eol_images[os_name]) != 0:
                 report += self.summary_for_images(images=self.already_eol_images, os_name=os_name)
@@ -243,7 +265,6 @@ class ContainerEolChecker(object):
         logger.debug(", ".join(self.default_mails))
         self.smtp_server = get_env_variable("SMTP_SERVER", "smtp.redhat.com")
         self.smtp_port = int(get_env_variable("SMTP_PORT", "25"))
-        self.send_email = bool(get_env_variable("SEND_EMAIL", "False"))
 
         send_from = "phracek@redhat.com"
         send_to = self.default_mails
