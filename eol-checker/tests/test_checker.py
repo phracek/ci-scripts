@@ -220,7 +220,10 @@ def test_summary_report_returns_newlines_when_no_images(checker):
         checker.approaching_eol_images[os_name] = {}
         checker.already_eol_images[os_name] = {}
 
-    assert checker.summary_report() == "\n\n"
+    assert (
+        checker.summary_report()
+        == "\nThe EOL checker is not able to connect to Jira. Update the Jira credentials in the environment variables.\n"
+    )
 
 
 def test_analyze_containers_skips_when_yaml_url_missing(checker):
