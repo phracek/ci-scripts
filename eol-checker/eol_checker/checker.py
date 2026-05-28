@@ -70,14 +70,18 @@ class ContainerEolChecker(object):
         self.jira_fetcher = JiraFetcher()
         self.eol_sme_mails = load_mails_from_environment()
         # Used for OpenShift CronJob
-        if "DEBUG" in os.environ:
-            self._setup_logger(debug=bool(os.getenv("DEBUG")))
-        else:
-            self._setup_logger(debug=debug)
-        if "SEND_EMAIL" in os.environ:
-            self.send_email = bool(os.getenv("SEND_EMAIL"))
-        else:
-            self.send_email = send_email
+        env_debug = os.getenv("DEBUG")
+        debug_enabled = (
+            debug if env_debug is None else env_debug.strip().lower() in {"1", "true", "yes", "on"}
+        )
+        self._setup_logger(debug=debug_enabled)
+
+        env_send_email = os.getenv("SEND_EMAIL")
+        self.send_email = (
+            send_email
+            if env_send_email is None
+            else env_send_email.strip().lower() in {"1", "true", "yes", "on"}
+        )
         self.smtp_port = 25
         self.smtp_server = "smtp.redhat.com"
         self.end_line = "<br>" if self.send_email else "\n"
@@ -93,7 +97,7 @@ class ContainerEolChecker(object):
         Args:
             debug: The debug flag.
         """
-        if debug is False:
+        if debug:
             setup_logger(level=logging.DEBUG)
         else:
             setup_logger(level=logging.INFO)
