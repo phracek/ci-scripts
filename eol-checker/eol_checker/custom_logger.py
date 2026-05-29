@@ -59,16 +59,7 @@ def setup_logger(logger_name: str = "eol_checker", level=logging.INFO):
         console_handler.setLevel(level)
         console_handler.setFormatter(ColoredFormatter())
 
-        # Create a file handler
-        file_handler = logging.FileHandler("eol_checker.log")
-        file_handler.setLevel(logging.DEBUG)
-        file_formatter = logging.Formatter(
-            "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
-        )
-        file_handler.setFormatter(file_formatter)
-
         logger.addHandler(console_handler)
-        logger.addHandler(file_handler)
         logger.setLevel(level=logging.DEBUG)
 
     return logger
