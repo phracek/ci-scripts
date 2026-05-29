@@ -1,12 +1,13 @@
 FROM quay.io/fedora/fedora:42
 
 ENV VERSION="42" \
-    RELEASE_UPSTREAM="0.10.2" \
+    RELEASE_UPSTREAM="0.10.3" \
     HOME="/home/eol-checker" \
     SUMMARY="EOL checker for SCL org projects" \
     DESCRIPTION="This image is used to run EOL checker for SCL org projects in CI." \
     NAME="eol-checker" \
-    WORK_DIR="/home/eol-checker/eol-checker"
+    HOME="/home/eol-checker" \
+    WORK_DIR="/home/nightly/ci-scripts"
 
 LABEL summary="${SUMMARY}" \
     description="${DESCRIPTION}" \
@@ -15,7 +16,7 @@ LABEL summary="${SUMMARY}" \
     io.k8s.vendor="SCL org" \
     architecture="x86_64"
 
-RUN dnf install -y python3.13-pip git && \
+RUN dnf install -y python3.13-pip git nss_wrapper && \
     dnf clean all
 
 COPY requirements.sh requirements.txt "${WORK_DIR}"
