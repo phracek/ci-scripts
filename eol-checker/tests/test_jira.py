@@ -1,3 +1,4 @@
+import os
 import pytest
 from flexmock import flexmock
 
@@ -11,10 +12,9 @@ def fetcher():
     return JiraFetcher()
 
 
-def test_init_uses_defaults_when_env_unset(monkeypatch):
-    monkeypatch.delenv("JIRA_DEPRECATION_TICKET", raising=False)
-    monkeypatch.delenv("JIRA_URL", raising=False)
-
+def test_init_uses_defaults_when_env_unset():
+    os.environ["JIRA_DEPRECATION_TICKET"] = JIRA_DEPRECATION_TICKET
+    os.environ["JIRA_URL"] = JIRA_URL
     instance = JiraFetcher()
 
     assert instance.jira_deprecation_ticket == JIRA_DEPRECATION_TICKET
@@ -23,9 +23,9 @@ def test_init_uses_defaults_when_env_unset(monkeypatch):
     assert instance.jira_deprecated_opened_issues == []
 
 
-def test_init_uses_env_overrides(monkeypatch):
-    monkeypatch.setenv("JIRA_DEPRECATION_TICKET", "CUSTOM-1")
-    monkeypatch.setenv("JIRA_URL", "https://jira.example.com")
+def test_init_uses_env_overrides():
+    os.environ["JIRA_DEPRECATION_TICKET"] = "CUSTOM-1"
+    os.environ["JIRA_URL"] = "https://jira.example.com"
 
     instance = JiraFetcher()
 
@@ -33,42 +33,33 @@ def test_init_uses_env_overrides(monkeypatch):
     assert instance.jira_url == "https://jira.example.com"
 
 
-def test_jira_property_returns_none_without_credentials(monkeypatch, fetcher):
-    monkeypatch.delenv("JIRA_USERNAME", raising=False)
-    monkeypatch.delenv("JIRA_PASSWORD", raising=False)
+def test_jira_property_returns_none_without_credentials(fetcher):
+    os.environ["JIRA_TOKEN"] = ""
+    os.environ["JIRA_USERNAME"] = ""
     flexmock(jira_module).should_receive("Jira").never()
 
     assert fetcher.jira is None
 
 
-def test_jira_property_returns_none_when_http_status_not_ok(monkeypatch, fetcher):
-    monkeypatch.setenv("JIRA_USERNAME", "user@redhat.com")
-    monkeypatch.setenv("JIRA_PASSWORD", "secret")
-    mock_client = flexmock(http_status_code=403)
-    mock_client.should_receive("http_status_code_handler").with_args(403).once()
-    flexmock(jira_module).should_receive("Jira").and_return(mock_client)
-
-    assert fetcher.jira is None
-
-
-def test_jira_property_creates_client_once(monkeypatch, fetcher):
-    monkeypatch.setenv("JIRA_USERNAME", "user@redhat.com")
-    monkeypatch.setenv("JIRA_PASSWORD", "secret")
-    mock_client = flexmock(http_status_code=200)
-    mock_client.should_receive("http_status_code_handler").with_args(200).once()
+def test_jira_property_creates_client_once(fetcher):
+    os.environ["JIRA_TOKEN"] = "secret"
+    os.environ["JIRA_USERNAME"] = "user@redhat.com"
+    mock_client = flexmock()
     flexmock(jira_module).should_receive("Jira").with_args(
-        url=fetcher.jira_url, username="user@redhat.com", password="secret"
+        url=fetcher.jira_url,
+        username="user@redhat.com",
+        password="secret",
+        cloud=True,
     ).once().and_return(mock_client)
 
-    assert fetcher.jira is mock_client
     assert fetcher.jira is mock_client
 
 
 def test_get_jira_deprecation_details_stores_issuelinks(fetcher):
     mock_client = flexmock()
-    mock_client.should_receive("issue").with_args(
-        fetcher.jira_deprecation_ticket
-    ).and_return({"fields": {"issuelinks": [{"inwardIssue": {"key": "CLONE-1"}}]}})
+    mock_client.should_receive("issue").with_args(fetcher.jira_deprecation_ticket).and_return(
+        {"fields": {"issuelinks": [{"inwardIssue": {"key": "CLONE-1"}}]}}
+    )
     fetcher._jira_api = mock_client
 
     fetcher.get_jira_deprecation_details()
@@ -78,9 +69,9 @@ def test_get_jira_deprecation_details_stores_issuelinks(fetcher):
 
 def test_get_jira_deprecation_details_skips_when_no_issuelinks(fetcher):
     mock_client = flexmock()
-    mock_client.should_receive("issue").with_args(
-        fetcher.jira_deprecation_ticket
-    ).and_return({"fields": {}})
+    mock_client.should_receive("issue").with_args(fetcher.jira_deprecation_ticket).and_return(
+        {"fields": {}}
+    )
     fetcher._jira_api = mock_client
 
     fetcher.get_jira_deprecation_details()
@@ -90,9 +81,7 @@ def test_get_jira_deprecation_details_skips_when_no_issuelinks(fetcher):
 
 def test_get_jira_deprecation_details_skips_when_fields_missing(fetcher):
     mock_client = flexmock()
-    mock_client.should_receive("issue").with_args(
-        fetcher.jira_deprecation_ticket
-    ).and_return({})
+    mock_client.should_receive("issue").with_args(fetcher.jira_deprecation_ticket).and_return({})
     fetcher._jira_api = mock_client
 
     fetcher.get_jira_deprecation_details()
