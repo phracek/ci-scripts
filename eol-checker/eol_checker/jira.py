@@ -26,8 +26,6 @@ class JiraFetcher:
         if self._jira_api is None:
             jira_token = os.getenv("JIRA_TOKEN", "")
             jira_username = os.getenv("JIRA_USERNAME", "")
-            logger.debug("JIRA token: '%s'", jira_token)
-            logger.debug("JIRA username: '%s'", jira_username)
             if not all((jira_token, jira_username)):
                 logger.error("JIRA_TOKEN and/or JIRA_USERNAME are not set")
                 return None
@@ -37,7 +35,7 @@ class JiraFetcher:
                 password=jira_token,
                 cloud=True,
             )
-            logger.debug("JIRA API initialized with URL: '%s' '%s'", self.jira_url, self._jira_api)
+            logger.debug("JIRA API initialized with URL: '%s'", self.jira_url)
         return self._jira_api
 
     def get_jira_deprecation_details(self):
@@ -47,12 +45,16 @@ class JiraFetcher:
             The JIRA details.
         """
         logger.debug("JIRA deprecation ticket details: '%s'", self.jira_deprecation_ticket)
+        if self.jira is None:
+            logger.error("JIRA API is not initialized")
+            return
         try:
             issue = self.jira.issue(self.jira_deprecation_ticket)
             if "fields" in issue and "issuelinks" in issue["fields"]:
                 self.jira_details = issue["fields"]["issuelinks"]
         except HTTPError as e:
             logger.error("Error occurred while fetching JIRA issue: %s", e)
+            self.jira_details = None
 
     def is_jira_filled_for_container(self, stream_name: str) -> str:
         jira_id = ""
