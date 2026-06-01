@@ -1,4 +1,4 @@
-.PHONY: run_daily_tests shellcheck build_images
+.PHONY: run_daily_tests shellcheck build_images daily_tests eol_checker
 
 run_daily_tests:
 	bash daily_tests/daily_scl_tests.sh
@@ -6,6 +6,10 @@ run_daily_tests:
 shellcheck:
 	./run-shellcheck.sh `git ls-files *.sh`
 
-build_images:
-	podman build -t quay.io/sclorg/upstream-daily-tests:0.10.3 -f Dockerfile.daily-tests .
-	podman build -t quay.io/sclorg/upstream-eol-checker:0.10.3 -f Dockerfile.eol-checker .
+build_images: daily_tests eol_checker
+
+daily_tests:
+	podman build -t quay.io/sclorg/upstream-daily-tests:0.10.4 -f Dockerfile.daily-tests .
+
+eol_checker:
+	podman build -t quay.io/sclorg/upstream-eol-checker:0.10.4 -f Dockerfile.eol-checker .
