@@ -89,7 +89,6 @@ class ContainerEolChecker(object):
         self.bold_line_end = "</b>" if self.send_email else ""
         self.mime_msg = MIMEMultipart()
         self.body = ""
-        self.debug = bool(os.getenv("DEBUG", "False"))
 
     def _setup_logger(self, debug: bool = False):
         """

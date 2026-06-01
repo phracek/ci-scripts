@@ -19,7 +19,7 @@ jobs:
           registry_username: ${{ secrets.QUAY_IMAGE_SCLORG_BUILDER_USERNAME }}
           registry_token: ${{ secrets.QUAY_IMAGE_SCLORG_BUILDER_TOKEN }}
           dockerfile: Dockerfile.daily-tests
-          tag: "0.10.3"
+          tag: "0.10.4"
           image_name: "upstream-daily-tests"
           quay_application_token: ${{ secrets.QUAY_IMAGE_SCLORG_UPDATE_DESC }}
 
@@ -31,6 +31,6 @@ jobs:
           registry_username: ${{ secrets.QUAY_IMAGE_SCLORG_BUILDER_USERNAME }}
           registry_token: ${{ secrets.QUAY_IMAGE_SCLORG_BUILDER_TOKEN }}
           dockerfile: Dockerfile.eol-checker
-          tag: "0.10.3"
+          tag: "0.10.4"
           image_name: "upstream-eol-checker"
           quay_application_token: ${{ secrets.QUAY_IMAGE_SCLORG_UPDATE_DESC }}

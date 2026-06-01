@@ -24,20 +24,20 @@ class JiraFetcher:
     @property
     def jira(self) -> Jira:
         if self._jira_api is None:
-            username = os.getenv("JIRA_USERNAME", "")
-            password = os.getenv("JIRA_PASSWORD", "")
-            if username == "" or password == "":
-                logger.error("JIRA_USERNAME and/or JIRA_PASSWORD are not set")
+            jira_token = os.getenv("JIRA_TOKEN", "")
+            jira_username = os.getenv("JIRA_USERNAME", "")
+            logger.debug("JIRA token: '%s'", jira_token)
+            logger.debug("JIRA username: '%s'", jira_username)
+            if not all((jira_token, jira_username)):
+                logger.error("JIRA_TOKEN and/or JIRA_USERNAME are not set")
                 return None
             self._jira_api = Jira(
-                url=self.jira_url, username=username, password=password
+                url=self.jira_url,
+                username=jira_username,
+                password=jira_token,
+                cloud=True,
             )
-            self._jira_api.http_status_code_handler(self._jira_api.http_status_code)
-            if self._jira_api.http_status_code != 200:
-                logger.error(
-                    "Failed to get JIRA details: %s", self._jira_api.http_status_code
-                )
-                return None
+            logger.debug("JIRA API initialized with URL: '%s' '%s'", self.jira_url, self._jira_api)
         return self._jira_api
 
     def get_jira_deprecation_details(self):
@@ -46,9 +46,13 @@ class JiraFetcher:
         Returns:
             The JIRA details.
         """
-        issue = self.jira.issue(self.jira_deprecation_ticket)
-        if "fields" in issue and "issuelinks" in issue["fields"]:
-            self.jira_details = issue["fields"]["issuelinks"]
+        logger.debug("JIRA deprecation ticket details: '%s'", self.jira_deprecation_ticket)
+        try:
+            issue = self.jira.issue(self.jira_deprecation_ticket)
+            if "fields" in issue and "issuelinks" in issue["fields"]:
+                self.jira_details = issue["fields"]["issuelinks"]
+        except HTTPError as e:
+            logger.error("Error occurred while fetching JIRA issue: %s", e)
 
     def is_jira_filled_for_container(self, stream_name: str) -> str:
         jira_id = ""
