@@ -1,7 +1,7 @@
 FROM quay.io/fedora/fedora:42
 
 ENV VERSION="42" \
-    RELEASE_UPSTREAM="0.10.4" \
+    RELEASE_UPSTREAM="0.10.5" \
     HOME="/home/eol-checker" \
     SUMMARY="EOL checker for SCL org projects" \
     DESCRIPTION="This image is used to run EOL checker for SCL org projects in CI." \

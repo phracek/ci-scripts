@@ -25,6 +25,10 @@ from colorama import Fore, Style
 
 
 class ColoredFormatter(logging.Formatter):
+    """
+    Colored formatter for the logger.
+    """
+
     COLORS = {
         "DEBUG": Fore.LIGHTBLUE_EX,
         "INFO": Fore.GREEN,
@@ -50,6 +54,14 @@ class ColoredFormatter(logging.Formatter):
 
 
 def setup_logger(logger_name: str = "eol_checker", level=logging.INFO):
+    """
+    Setup the logger.
+    Args:
+        logger_name: The name of the logger.
+        level: The level of the logger.
+    Returns:
+        The logger.
+    """
     logger = logging.getLogger(logger_name)
 
     # Check if handlers already exist (to avoid duplicate logs)

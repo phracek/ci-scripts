@@ -44,7 +44,6 @@ from eol_checker.utils import (
     is_eol_version,
     get_lifecycles,
     load_mails_from_environment,
-    get_env_variable,
 )
 from eol_checker.constants import OS_NAMES, CONTAINER_NAMES
 
@@ -60,21 +59,21 @@ class ContainerEolChecker(object):
 
     def __init__(self, debug: bool = False, send_email: bool = False):
         self.today = date.today()
-        self.lifecycle_data: Any = None
-        self.eol_images: dict = {}
-        self.already_eol_images: dict = {}
-        self.approaching_eol_images: dict = {}
-        self.os_name: str = ""
-        self.default_mails: List[str] = os.getenv("DEFAULT_EMAILS", "").split(",")
-        self.container_to_analyze: str = ""
-        self.jira_fetcher = JiraFetcher()
-        self.eol_sme_mails = load_mails_from_environment()
         # Used for OpenShift CronJob
         env_debug = os.getenv("DEBUG")
         debug_enabled = (
             debug if env_debug is None else env_debug.strip().lower() in {"1", "true", "yes", "on"}
         )
         self._setup_logger(debug=debug_enabled)
+        self.lifecycle_data: Any = None
+        self.eol_images: dict = {}
+        self.already_eol_images: dict = {}
+        self.approaching_eol_images: dict = {}
+        self.os_name: str = ""
+        self.default_mails: List[str] = os.getenv("DEFAULT_EMAILS").split(",")
+        self.container_to_analyze: str = ""
+        self.jira_fetcher = JiraFetcher()
+        self.eol_sme_mails = load_mails_from_environment()
 
         env_send_email = os.getenv("SEND_EMAIL")
         self.send_email = (
@@ -150,7 +149,7 @@ class ContainerEolChecker(object):
         for lifecycle in get_lifecycles(data):
             self.check_enddate(lifecycle)
 
-    def _get_jira_msg(self, report_type: str, enddate: str) -> str:
+    def _get_jira_msg(self, report_type: str, enddate: str, jira_id: str = "") -> str:
         """
         Generate a Jira message.
         Args:
@@ -159,12 +158,15 @@ class ContainerEolChecker(object):
         Returns:
             The Jira message.
         """
-        jira_msg = (
-            "Connection to Jira not available"
-            if self.jira_fetcher.jira is None
-            else "Jira ticket is not filled. Use Jira issue template:"
-        )
-        return self.bold_line + f"{report_type} in {enddate}" + self.bold_line_end + f". {jira_msg}"
+        jira_url = get_jira_ticket_url(jira_issue_id=self.jira_fetcher.jira_deprecation_ticket)
+        url = f"<a href='{jira_url}'>{jira_url}</a>" if self.send_email else jira_url
+        msg = "Jira ticket is not filled. Use this template: "
+        if jira_id != "":
+            jira_url = get_jira_ticket_url(jira_issue_id=jira_id)
+            url = f"<a href='{jira_url}'>{jira_url}</a>" if self.send_email else jira_url
+            msg = "Jira ticket is already filed: "
+        jira_msg = f"{msg} {url}"
+        return self.bold_line + f"{report_type} in {enddate}. " + self.bold_line_end + jira_msg
 
     def summary_for_images(self, images: dict, os_name: str, eol_type: bool = True) -> str:
         """
@@ -188,27 +190,25 @@ class ContainerEolChecker(object):
             logger.info("Processing container: '%s' with values: '%s'", container_name, values)
             stream_name = values["name"]
             if self.send_email:
-                for mail in self.eol_sme_mails[container_name]:
+                mails = [
+                    self.eol_sme_mails[group]
+                    for group in self.eol_sme_mails.keys()
+                    if container_name.startswith(group)
+                ]
+                logger.debug("Mails: '%s' for container: '%s'", mails, container_name)
+                for mail in mails:
                     if mail and mail not in self.default_mails:
-                        self.default_mails.append(mail)
+                        self.default_mails.extend(mail)
             if self.jira_fetcher.jira is None:
                 logger.error("Connection to Jira failed")
                 jira_msg = self._get_jira_msg(report_type=report_type, enddate=values["enddate"])
-                jira_id = self.jira_fetcher.jira_deprecation_ticket
-                jira_url = get_jira_ticket_url(jira_issue_id=jira_id)
-                url = f"<a href='{jira_url}'>{jira_url}</a>" if self.send_email else jira_url
-                report += f"{stream_name} for {os_name} {jira_msg} {url}{self.end_line}"
+                report += f"{stream_name} for {os_name}.{jira_msg} {self.end_line}"
                 continue
-            jira_msg = self._get_jira_msg(report_type=report_type, enddate=values["enddate"])
-            jira_msg += "Jira ticket is already filed:"
-            jira_id = self.jira_fetcher.is_jira_filled_for_container(stream_name=stream_name)
-            if jira_id == "":
-                jira_msg = self._get_jira_msg(report_type=report_type, enddate=values["enddate"])
-                jira_id = self.jira_fetcher.jira_deprecation_ticket
-                jira_url = get_jira_ticket_url(jira_issue_id=jira_id)
-                url = f"<a href='{jira_url}'>{jira_url}</a>" if self.send_email else jira_url
-                report += f"{stream_name} for {os_name} {jira_msg} {url}{self.end_line}"
-            report += "\n"
+            jira_id = self.jira_fetcher.is_jira_filed_for_container(stream_name=stream_name)
+            jira_msg = self._get_jira_msg(
+                report_type=report_type, enddate=values["enddate"], jira_id=jira_id
+            )
+            report += f"{stream_name} for {os_name} {jira_msg} {self.end_line}\n"
 
         return report
 
@@ -265,18 +265,17 @@ class ContainerEolChecker(object):
         Send emails with the container EOL information.
         """
         logger.debug("Sending emails is enabled")
-        logger.debug(", ".join(self.default_mails))
-        self.smtp_server = get_env_variable("SMTP_SERVER", "smtp.redhat.com")
-        self.smtp_port = int(get_env_variable("SMTP_PORT", "25"))
+        logger.debug(self.default_mails)
+        self.smtp_server = os.getenv("SMTP_SERVER", "smtp.redhat.com")
+        self.smtp_port = int(os.getenv("SMTP_PORT", "25"))
 
         send_from = "phracek@redhat.com"
-        send_to = self.default_mails
         self.mime_msg["From"] = send_from
-        self.mime_msg["To"] = ", ".join(send_to)
+        self.mime_msg["To"] = ",".join(self.default_mails)
         self.mime_msg["Subject"] = "Container EOL Checker Report"
         logger.debug(
             "Sending email with subject: 'Container EOL Checker Report' to: '%s'",
-            send_to,
+            self.default_mails,
         )
         logger.debug("Email body: '%s'", self.body)
         logger.debug("Message: '%s'", self.mime_msg)
@@ -284,7 +283,7 @@ class ContainerEolChecker(object):
         try:
             smtp = SMTP(self.smtp_server, int(self.smtp_port))
             smtp.set_debuglevel(5)
-            smtp.sendmail(send_from, send_to, self.mime_msg.as_string())
+            smtp.sendmail(send_from, self.default_mails, self.mime_msg.as_string())
         except smtplib.SMTPRecipientsRefused as e:
             logger.error("Error sending email(SMTPRecipientsRefused): %s", e.strerror)
         except smtplib.SMTPException as e:
@@ -297,12 +296,13 @@ class ContainerEolChecker(object):
         """
         Run the container EOL checker.
         """
+        logger.debug("Variables:\n%s", vars(self))
         logger.info("Running container EOL checker")
         if self.jira_fetcher.jira is None:
             logger.error("Connection to Jira failed")
         else:
             self.jira_fetcher.get_jira_deprecation_details()
-            self.jira_fetcher.check_if_jira_is_filled()
+            self.jira_fetcher.check_if_jira_is_filed()
         self.analyze_containers()
         self.body = self.summary_report()
         logger.info(self.body)

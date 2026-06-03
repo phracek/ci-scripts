@@ -55,17 +55,26 @@ class JiraFetcher:
         except HTTPError as e:
             logger.error("Error occurred while fetching JIRA issue: %s", e)
             self.jira_details = None
+        logger.debug("JIRA details: '%s'", self.jira_details)
 
-    def is_jira_filled_for_container(self, stream_name: str) -> str:
+    def is_jira_filed_for_container(self, stream_name: str) -> str:
+        """
+        Check if the JIRA ticket is filled for a container.
+        Args:
+            stream_name: The stream name.
+        Returns:
+            The JIRA issue ID if the JIRA ticket is filled, empty string otherwise.
+        """
         jira_id = ""
         for issue in self.jira_deprecated_opened_issues:
-            logger.info("Check is stream '%s' in issue '%s'", stream_name, issue)
+            logger.info("Check if stream '%s' in issue '%s'", stream_name, issue)
             if "summary" in issue and stream_name in issue["summary"]:
                 jira_id = issue["jira_issue_id"]
+                logger.debug("Jira is already filed for container '%s'", stream_name)
                 break
         return jira_id
 
-    def check_if_jira_is_filled(self) -> bool:
+    def check_if_jira_is_filed(self) -> bool:
         """
         Check if the JIRA ticket is filled.
         Returns:

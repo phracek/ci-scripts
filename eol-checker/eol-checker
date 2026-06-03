@@ -64,7 +64,6 @@ def main(args):
     Returns:
         The exit code. 0 if successful, 1 if error.
     """
-    print(f"Arguments: {args}")
     checker = ContainerEolChecker(debug=args.debug, send_email=args.send_email)
     checker.run()
     sys.exit(0)

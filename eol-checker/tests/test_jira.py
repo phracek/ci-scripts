@@ -89,7 +89,16 @@ def test_get_jira_deprecation_details_skips_when_fields_missing(fetcher):
     assert fetcher.jira_details is None
 
 
-def test_is_jira_filled_for_container_returns_matching_issue_id(fetcher):
+def test_get_jira_deprecation_details_skips_when_jira_unavailable(fetcher):
+    os.environ["JIRA_TOKEN"] = ""
+    os.environ["JIRA_USERNAME"] = ""
+
+    fetcher.get_jira_deprecation_details()
+
+    assert fetcher.jira_details is None
+
+
+def test_is_jira_filed_for_container_returns_matching_issue_id(fetcher):
     fetcher.jira_deprecated_opened_issues = [
         {
             "summary": "EOL nodejs RHEL9",
@@ -103,18 +112,18 @@ def test_is_jira_filled_for_container_returns_matching_issue_id(fetcher):
         },
     ]
 
-    assert fetcher.is_jira_filled_for_container("nodejs") == "RHELMISC-100"
-    assert fetcher.is_jira_filled_for_container("unknown") == ""
+    assert fetcher.is_jira_filed_for_container("nodejs") == "RHELMISC-100"
+    assert fetcher.is_jira_filed_for_container("unknown") == ""
 
 
-def test_check_if_jira_is_filled_returns_false_when_details_missing(fetcher):
+def test_check_if_jira_is_filed_returns_false_when_details_missing(fetcher):
     fetcher.jira_details = None
 
-    assert fetcher.check_if_jira_is_filled() is False
+    assert fetcher.check_if_jira_is_filed() is False
     assert fetcher.jira_deprecated_opened_issues == []
 
 
-def test_check_if_jira_is_filled_collects_allowed_status_issues(fetcher):
+def test_check_if_jira_is_filed_collects_allowed_status_issues(fetcher):
     allowed_status = ALLOWED_STATUSES[0]
     fetcher.jira_details = [
         {"outwardIssue": {"key": "SKIP-1"}},
@@ -138,7 +147,7 @@ def test_check_if_jira_is_filled_collects_allowed_status_issues(fetcher):
         },
     ]
 
-    assert fetcher.check_if_jira_is_filled() is True
+    assert fetcher.check_if_jira_is_filed() is True
     assert fetcher.jira_deprecated_opened_issues == [
         {
             "issue_status": allowed_status,
@@ -148,14 +157,14 @@ def test_check_if_jira_is_filled_collects_allowed_status_issues(fetcher):
     ]
 
 
-def test_check_if_jira_is_filled_skips_links_without_inward_issue(fetcher):
+def test_check_if_jira_is_filed_skips_links_without_inward_issue(fetcher):
     fetcher.jira_details = [{"type": {"name": "Relates"}}]
 
-    assert fetcher.check_if_jira_is_filled() is True
+    assert fetcher.check_if_jira_is_filed() is True
     assert fetcher.jira_deprecated_opened_issues == []
 
 
-def test_check_if_jira_is_filled_skips_disallowed_status(fetcher):
+def test_check_if_jira_is_filed_skips_disallowed_status(fetcher):
     fetcher.jira_details = [
         {
             "inwardIssue": {
@@ -165,5 +174,5 @@ def test_check_if_jira_is_filled_skips_disallowed_status(fetcher):
         }
     ]
 
-    assert fetcher.check_if_jira_is_filled() is True
+    assert fetcher.check_if_jira_is_filed() is True
     assert fetcher.jira_deprecated_opened_issues == []

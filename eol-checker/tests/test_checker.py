@@ -32,18 +32,22 @@ def _container_struct(name, enddate):
 
 
 def test_init_defaults(monkeypatch):
-    monkeypatch.delenv("DEFAULT_EMAILS", raising=False)
+    monkeypatch.setenv("DEFAULT_EMAILS", "default@redhat.com")
+    monkeypatch.delenv("DEBUG", raising=False)
+    monkeypatch.delenv("SEND_EMAIL", raising=False)
     instance = ContainerEolChecker()
 
     assert instance.today == date.today()
     assert instance.send_email is False
     assert instance.end_line == "\n"
     assert instance.bold_line == ""
+    assert instance.default_mails == ["default@redhat.com"]
     assert instance.eol_images == {}
     assert instance.body == ""
 
 
-def test_init_send_email_formatting():
+def test_init_send_email_formatting(monkeypatch):
+    monkeypatch.setenv("DEFAULT_EMAILS", "default@redhat.com")
     instance = ContainerEolChecker(send_email=True)
 
     assert instance.end_line == "<br>"
@@ -128,22 +132,31 @@ def test_analyze_lifecycle_yaml_processes_all_lifecycles(checker_with_os_context
     )
 
 
-def test_get_jira_msg_when_jira_unavailable(checker):
-    flexmock(checker.jira_fetcher).should_receive("jira").and_return(None)
-
+def test_get_jira_msg_without_filed_ticket(checker):
     message = checker._get_jira_msg("reached EOL", "20250501")
 
     assert "reached EOL in 20250501" in message
-    assert "Connection to Jira not available" in message
+    assert "Jira ticket is not filled" in message
+    assert f"{JIRA_URL}/browse/{JIRA_DEPRECATION_TICKET}" in message
 
 
-def test_get_jira_msg_when_jira_available(checker):
-    flexmock(checker.jira_fetcher).should_receive("jira").and_return(flexmock())
-
-    message = checker._get_jira_msg("approaching EOL", "20250601")
+def test_get_jira_msg_with_filed_ticket(checker):
+    message = checker._get_jira_msg("approaching EOL", "20250601", jira_id="RHELMISC-999")
 
     assert "approaching EOL in 20250601" in message
-    assert "Jira ticket is not filled" in message
+    assert "Jira ticket is already filed" in message
+    assert f"{JIRA_URL}/browse/RHELMISC-999" in message
+
+
+def test_get_jira_msg_html_links_when_sending_email(checker):
+    checker.send_email = True
+    checker.bold_line = "<b>"
+    checker.bold_line_end = "</b>"
+
+    message = checker._get_jira_msg("reached EOL", "20250501")
+
+    assert "<a href='" in message
+    assert f"{JIRA_URL}/browse/{JIRA_DEPRECATION_TICKET}" in message
 
 
 def test_summary_for_images_returns_empty_when_no_containers(checker):
@@ -160,14 +173,14 @@ def test_summary_for_images_when_jira_unavailable(checker):
 
     assert "Summary report for RHEL9:" in report
     assert "nodejs-18 for RHEL9" in report
-    assert "Connection to Jira not available" in report
+    assert "Jira ticket is not filled" in report
     assert f"{JIRA_URL}/browse/{JIRA_DEPRECATION_TICKET}" in report
 
 
 def test_summary_for_images_without_jira_ticket(checker):
     checker.eol_images["RHEL9"] = {"nodejs": _container_struct("nodejs-18", "20250501")}
     flexmock(checker.jira_fetcher).should_receive("jira").and_return(flexmock())
-    flexmock(checker.jira_fetcher).should_receive("is_jira_filled_for_container").with_args(
+    flexmock(checker.jira_fetcher).should_receive("is_jira_filed_for_container").with_args(
         stream_name="nodejs-18"
     ).and_return("")
 
@@ -176,6 +189,20 @@ def test_summary_for_images_without_jira_ticket(checker):
     assert "nodejs-18 for RHEL9" in report
     assert "Jira ticket is not filled" in report
     assert f"{JIRA_URL}/browse/{JIRA_DEPRECATION_TICKET}" in report
+
+
+def test_summary_for_images_with_jira_ticket_filed(checker):
+    checker.eol_images["RHEL9"] = {"nodejs": _container_struct("nodejs-18", "20250501")}
+    flexmock(checker.jira_fetcher).should_receive("jira").and_return(flexmock())
+    flexmock(checker.jira_fetcher).should_receive("is_jira_filed_for_container").with_args(
+        stream_name="nodejs-18"
+    ).and_return("RHELMISC-500")
+
+    report = checker.summary_for_images(checker.eol_images, "RHEL9")
+
+    assert "nodejs-18 for RHEL9" in report
+    assert "Jira ticket is already filed" in report
+    assert f"{JIRA_URL}/browse/RHELMISC-500" in report
 
 
 def test_summary_for_images_adds_sme_mails_when_sending_email(checker):
@@ -279,19 +306,9 @@ def test_analyze_containers_populates_eol_from_yaml(checker):
         assert checker.eol_images[os_name]["nodejs"] == _container_struct("nodejs-18", "20250501")
 
 
-def _mock_send_email_env():
-    flexmock(checker_module).should_receive("get_env_variable").with_args(
-        "SMTP_SERVER", "smtp.redhat.com"
-    ).and_return("smtp.test")
-    flexmock(checker_module).should_receive("get_env_variable").with_args(
-        "SMTP_PORT", "25"
-    ).and_return("2525")
-    flexmock(checker_module).should_receive("get_env_variable").with_args(
-        "SEND_EMAIL", "False"
-    ).and_return("True")
-
-
-def test_send_emails_sends_html_message(checker):
+def test_send_emails_sends_html_message(checker, monkeypatch):
+    monkeypatch.setenv("SMTP_SERVER", "smtp.test")
+    monkeypatch.setenv("SMTP_PORT", "2525")
     checker.send_email = True
     checker.default_mails = ["recipient@redhat.com"]
     checker.body = "<b>report</b>"
@@ -299,7 +316,6 @@ def test_send_emails_sends_html_message(checker):
     mock_smtp.should_receive("set_debuglevel").with_args(5).once()
     mock_smtp.should_receive("sendmail").once()
     mock_smtp.should_receive("close").once()
-    _mock_send_email_env()
     flexmock(checker_module).should_receive("SMTP").with_args("smtp.test", 2525).and_return(
         mock_smtp
     )
@@ -312,7 +328,9 @@ def test_send_emails_sends_html_message(checker):
     assert "recipient@redhat.com" in checker.mime_msg["To"]
 
 
-def test_send_emails_logs_smtp_exception(checker, caplog):
+def test_send_emails_logs_smtp_exception(checker, caplog, monkeypatch):
+    monkeypatch.setenv("SMTP_SERVER", "smtp.test")
+    monkeypatch.setenv("SMTP_PORT", "2525")
     checker.send_email = True
     checker.default_mails = ["recipient@redhat.com"]
     checker.body = "report"
@@ -320,7 +338,6 @@ def test_send_emails_logs_smtp_exception(checker, caplog):
     mock_smtp.should_receive("set_debuglevel").and_return(None)
     mock_smtp.should_receive("sendmail").and_raise(smtplib.SMTPException("smtp failure"))
     mock_smtp.should_receive("close").once()
-    _mock_send_email_env()
     flexmock(checker_module).should_receive("SMTP").and_return(mock_smtp)
 
     with caplog.at_level("ERROR"):
@@ -343,7 +360,7 @@ def test_run_skips_jira_when_connection_unavailable(checker):
 def test_run_fetches_jira_and_analyzes_containers(checker):
     flexmock(checker.jira_fetcher).should_receive("jira").and_return(flexmock())
     flexmock(checker.jira_fetcher).should_receive("get_jira_deprecation_details").once()
-    flexmock(checker.jira_fetcher).should_receive("check_if_jira_is_filled").once()
+    flexmock(checker.jira_fetcher).should_receive("check_if_jira_is_filed").once()
     flexmock(checker).should_receive("analyze_containers").once()
     flexmock(checker).should_receive("summary_report").and_return("\nreport\n")
     flexmock(checker).should_receive("send_emails").never()

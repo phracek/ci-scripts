@@ -22,7 +22,7 @@
 
 JIRA_URL = "https://redhat.atlassian.net"
 OS_NAMES = ["RHEL8", "RHEL9", "RHEL10"]
-ALLOWED_STATUSES = ["Open", "In Progress", "To Do"]
+ALLOWED_STATUSES = ["New", "Open", "In Progress", "To Do"]
 CONTAINER_NAMES = [
     "nodejs",
     "httpd",
@@ -40,6 +40,7 @@ CONTAINER_NAMES = [
     "python39",
     "python311",
     "python312",
+    "python314",
     "ruby",
 ]
 JIRA_DEPRECATION_TICKET = "RHELMISC-20810"
